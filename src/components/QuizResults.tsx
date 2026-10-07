@@ -1,170 +1,180 @@
-import { Quiz } from '../types';
-import { ArrowLeft, RotateCcw, Printer, CheckCircle, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Quiz, UserStats, ACHIEVEMENTS } from '../types';
+import { ArrowLeft, RotateCcw, Printer, Trophy, CheckCircle, XCircle, Share2, Copy, Check } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 interface QuizResultsProps {
   quiz: Quiz;
+  stats: UserStats;
   onBack: () => void;
   onRetake: () => void;
   onPrint: () => void;
 }
 
-export default function QuizResults({ quiz, onBack, onRetake, onPrint }: QuizResultsProps) {
+export default function QuizResults({ quiz, stats, onBack, onRetake, onPrint }: QuizResultsProps) {
   const score = quiz.score || 0;
   const total = quiz.questions.length;
   const percentage = Math.round((score / total) * 100);
   const answers = quiz.answers || {};
+  const [showShare, setShowShare] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [animatedPercentage, setAnimatedPercentage] = useState(0);
+
+  // Animate score reveal
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, colors: ['#7c3aed', '#a855f7', '#10b981', '#f59e0b'] });
+    }, 500);
+
+    let current = 0;
+    const interval = setInterval(() => {
+      current += Math.ceil(percentage / 30);
+      if (current >= percentage) { current = percentage; clearInterval(interval); }
+      setAnimatedPercentage(current);
+    }, 30);
+
+    return () => { clearTimeout(timer); clearInterval(interval); };
+  }, [percentage]);
 
   const getGrade = () => {
-    if (percentage >= 90) return { label: 'A', color: 'text-emerald-600', bg: 'bg-emerald-50', message: 'Excellent work!' };
-    if (percentage >= 80) return { label: 'B', color: 'text-blue-600', bg: 'bg-blue-50', message: 'Great job!' };
-    if (percentage >= 70) return { label: 'C', color: 'text-amber-600', bg: 'bg-amber-50', message: 'Good effort!' };
-    if (percentage >= 60) return { label: 'D', color: 'text-orange-600', bg: 'bg-orange-50', message: 'Keep studying!' };
-    return { label: 'F', color: 'text-red-600', bg: 'bg-red-50', message: 'Review the material and try again.' };
+    if (percentage >= 90) return { label: 'A+', color: 'var(--emerald)', message: 'Outstanding!' };
+    if (percentage >= 80) return { label: 'A', color: 'var(--emerald)', message: 'Excellent work!' };
+    if (percentage >= 70) return { label: 'B', color: 'var(--sky)', message: 'Great job!' };
+    if (percentage >= 60) return { label: 'C', color: 'var(--amber)', message: 'Good effort!' };
+    return { label: 'D', color: 'var(--rose)', message: 'Keep studying!' };
   };
 
   const grade = getGrade();
 
+  const shareText = `🎓 QuizForge Results\n📚 ${quiz.chapterTitle}\n📊 Score: ${score}/${total} (${percentage}%)\n🏆 Grade: ${grade.label}\n🔥 Streak: ${stats.streak} days`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(shareText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 animate-fade-in-up">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </button>
+        <button onClick={onBack} className="btn-ghost p-2" aria-label="Go back"><ArrowLeft className="w-5 h-5" /></button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quiz Results</h1>
-          <p className="text-sm text-gray-500">{quiz.chapterTitle} • {quiz.subject}</p>
+          <h1 style={{ fontFamily: 'Nunito, sans-serif', color: 'var(--text-primary)' }}>Quiz Results</h1>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{quiz.chapterTitle} • {quiz.subject}</p>
         </div>
       </div>
 
       {/* Score Card */}
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
-        <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full ${grade.bg} mb-4`}>
-          <span className={`text-4xl font-bold ${grade.color}`}>{grade.label}</span>
+      <div className="glass-card-static p-8 text-center">
+        <div className="animate-score-reveal">
+          <div className="inline-flex items-center justify-center w-28 h-28 rounded-full mb-4" style={{ background: grade.color + '15' }}>
+            <span className="text-5xl font-black" style={{ color: grade.color, fontFamily: 'Nunito, sans-serif' }}>{grade.label}</span>
+          </div>
         </div>
-        <h2 className={`text-2xl font-bold ${grade.color}`}>{grade.message}</h2>
-        <div className="flex items-center justify-center gap-6 mt-4">
+        <h2 className="text-xl font-bold mb-1" style={{ color: grade.color }}>{grade.message}</h2>
+
+        <div className="flex items-center justify-center gap-6 mt-6">
           <div className="text-center">
-            <p className="text-3xl font-bold text-gray-900">{percentage}%</p>
-            <p className="text-sm text-gray-500">Score</p>
+            <p className="text-3xl font-black" style={{ color: 'var(--text-primary)' }}>{animatedPercentage}%</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Score</p>
           </div>
-          <div className="w-px h-12 bg-gray-200" />
+          <div className="w-px h-12" style={{ background: 'var(--border-primary)' }} />
           <div className="text-center">
-            <p className="text-3xl font-bold text-gray-900">{score}/{total}</p>
-            <p className="text-sm text-gray-500">Correct</p>
+            <p className="text-3xl font-black" style={{ color: 'var(--text-primary)' }}>{score}/{total}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Correct</p>
           </div>
-          <div className="w-px h-12 bg-gray-200" />
+          <div className="w-px h-12" style={{ background: 'var(--border-primary)' }} />
           <div className="text-center">
-            <p className="text-3xl font-bold text-gray-900">{total - score}</p>
-            <p className="text-sm text-gray-500">Incorrect</p>
+            <p className="text-3xl font-black" style={{ color: 'var(--text-primary)' }}>{quiz.timeTaken ? `${Math.floor(quiz.timeTaken / 60)}:${(quiz.timeTaken % 60).toString().padStart(2, '0')}` : '—'}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Time</p>
           </div>
         </div>
 
         {/* Score Bar */}
         <div className="mt-6 max-w-md mx-auto">
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-1000 ${
-                percentage >= 70 ? 'bg-emerald-500' : percentage >= 50 ? 'bg-amber-500' : 'bg-red-500'
-              }`}
-              style={{ width: `${percentage}%` }}
-            />
+          <div className="progress-bar h-3">
+            <div className="progress-bar-fill h-full" style={{ width: `${percentage}%`, background: grade.color }} />
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-center gap-3 mt-6">
-          <button
-            onClick={onRetake}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl font-medium hover:bg-indigo-100 transition-colors"
-          >
-            <RotateCcw className="w-4 h-4" /> Retake Quiz
-          </button>
-          <button
-            onClick={onPrint}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-700 rounded-xl font-medium hover:bg-gray-100 transition-colors"
-          >
-            <Printer className="w-4 h-4" /> Print Results
-          </button>
+        {/* Actions */}
+        <div className="flex items-center justify-center gap-3 mt-6 flex-wrap">
+          <button onClick={onRetake} className="btn-secondary"><RotateCcw className="w-4 h-4" /> Retake</button>
+          <button onClick={onPrint} className="btn-secondary"><Printer className="w-4 h-4" /> Print</button>
+          <button onClick={() => setShowShare(!showShare)} className="btn-secondary"><Share2 className="w-4 h-4" /> Share</button>
         </div>
+
+        {/* Share Panel */}
+        {showShare && (
+          <div className="mt-4 p-4 rounded-xl animate-scale-in text-left" style={{ background: 'var(--bg-secondary)' }}>
+            <pre className="text-xs whitespace-pre-wrap mb-3" style={{ color: 'var(--text-secondary)' }}>{shareText}</pre>
+            <button onClick={handleCopy} className="btn-primary text-sm py-2 px-4">
+              {copied ? <><Check className="w-4 h-4" /> Copied!</> : <><Copy className="w-4 h-4" /> Copy to Clipboard</>}
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* New Achievements */}
+      {stats.achievements.length > 0 && (
+        <div className="glass-card-static p-4">
+          <h3 className="font-bold text-sm mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+            <Trophy className="w-4 h-4" style={{ color: 'var(--amber)' }} /> Your Achievements
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {stats.achievements.map(id => {
+              const a = ACHIEVEMENTS[id];
+              if (!a) return null;
+              return (
+                <span key={id} className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1" style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+                  {a.icon} {a.label}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Question Review */}
       <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Question Review</h2>
-        <div className="space-y-4">
+        <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)', fontFamily: 'Nunito, sans-serif' }}>Review</h2>
+        <div className="space-y-3">
           {quiz.questions.map((question, qIndex) => {
             const userAnswer = answers[question.id];
             const isCorrect = userAnswer === question.correctAnswer;
 
             return (
-              <div
-                key={question.id}
-                className={`bg-white rounded-xl p-5 shadow-sm border ${
-                  isCorrect ? 'border-emerald-200' : 'border-red-200'
-                }`}
-              >
-                {/* Question Header */}
+              <div key={question.id} className="glass-card-static p-4 animate-fade-in-up" style={{ animationDelay: `${qIndex * 0.03}s`, borderColor: isCorrect ? 'var(--emerald)' + '40' : 'var(--rose)' + '40' }}>
                 <div className="flex items-start gap-3 mb-3">
-                  <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${
-                    isCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                  }`}>
-                    {isCorrect ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${isCorrect ? 'animate-pulse-correct' : 'animate-shake'}`}
+                    style={{ background: isCorrect ? 'var(--emerald)' + '20' : 'var(--rose)' + '20' }}>
+                    {isCorrect ? <CheckCircle className="w-4 h-4" style={{ color: 'var(--emerald)' }} /> : <XCircle className="w-4 h-4" style={{ color: 'var(--rose)' }} />}
                   </span>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">
-                      <span className="text-gray-400 mr-2">Q{qIndex + 1}.</span>
-                      {question.question}
-                    </p>
-                  </div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Q{qIndex + 1}.</span> {question.question}
+                  </p>
                 </div>
-
-                {/* Options */}
-                <div className="space-y-1.5 ml-10">
+                <div className="space-y-1 ml-10">
                   {question.options.map((option, oIndex) => {
                     const isUserChoice = userAnswer === oIndex;
                     const isCorrectAnswer = question.correctAnswer === oIndex;
-                    const letter = String.fromCharCode(65 + oIndex);
-
-                    let optionClass = 'bg-gray-50 text-gray-600 border-gray-100';
-                    if (isCorrectAnswer) {
-                      optionClass = 'bg-emerald-50 text-emerald-800 border-emerald-200';
-                    } else if (isUserChoice && !isCorrect) {
-                      optionClass = 'bg-red-50 text-red-800 border-red-200';
-                    }
+                    let style = { background: 'var(--bg-secondary)', color: 'var(--text-muted)', border: '1px solid transparent' };
+                    if (isCorrectAnswer) style = { background: 'var(--emerald)' + '15', color: 'var(--emerald)', border: '1px solid var(--emerald)' + '30' };
+                    else if (isUserChoice) style = { background: 'var(--rose)' + '15', color: 'var(--rose)', border: '1px solid var(--rose)' + '30' };
 
                     return (
-                      <div
-                        key={oIndex}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${optionClass}`}
-                      >
-                        <span className="font-bold w-5">{letter}.</span>
+                      <div key={oIndex} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs" style={style}>
+                        <span className="font-bold">{String.fromCharCode(65 + oIndex)}.</span>
                         <span className="flex-1">{option}</span>
-                        {isCorrectAnswer && (
-                          <span className="text-xs font-medium text-emerald-600 flex items-center gap-1">
-                            <CheckCircle className="w-3.5 h-3.5" /> Correct
-                          </span>
-                        )}
-                        {isUserChoice && !isCorrect && (
-                          <span className="text-xs font-medium text-red-600 flex items-center gap-1">
-                            <XCircle className="w-3.5 h-3.5" /> Your answer
-                          </span>
-                        )}
+                        {isCorrectAnswer && <CheckCircle className="w-3 h-3" />}
+                        {isUserChoice && !isCorrect && <XCircle className="w-3 h-3" />}
                       </div>
                     );
                   })}
                 </div>
-
-                {/* Explanation */}
                 {question.explanation && !isCorrect && (
-                  <div className="mt-3 ml-10 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <p className="text-sm text-blue-800">
-                      <span className="font-medium">Explanation:</span> {question.explanation}
-                    </p>
-                  </div>
+                  <p className="mt-2 ml-10 text-xs" style={{ color: 'var(--text-muted)' }}>{question.explanation}</p>
                 )}
               </div>
             );
