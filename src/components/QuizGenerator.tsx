@@ -1,161 +1,160 @@
 import { useState } from 'react';
 import { Chapter, Quiz } from '../types';
-import { generateQuiz } from '../utils/quizGenerator';
-import { v4 as uuidv4 } from 'uuid';
-import { Wand2, Settings, ChevronDown, Sparkles, AlertCircle } from 'lucide-react';
+import { parseStructuredContent, hasStructuredFormat } from '../utils/structuredParser';
+import { Wand2, AlertCircle } from 'lucide-react';
 
 interface QuizGeneratorProps {
   chapters: Chapter[];
-  activeChapter: Chapter | null;
   onGenerate: (quiz: Quiz) => void;
-  onSelectChapter: (chapter: Chapter) => void;
 }
 
-export default function QuizGenerator({ chapters, activeChapter, onGenerate, onSelectChapter }: QuizGeneratorProps) {
+export default function QuizGenerator({ chapters, onGenerate }: QuizGeneratorProps) {
+  const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
   const [numQuestions, setNumQuestions] = useState(10);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
 
   const handleGenerate = () => {
-    if (!activeChapter) return;
+    if (!selectedChapter) return;
+
+    // Check if content has structured format
+    if (!hasStructuredFormat(selectedChapter.content)) {
+      alert(
+        'Error: This chapter does not follow the required Q: and A: format.\n\n' +
+        'Please edit the chapter content to use the structured format:\n\n' +
+        'Q: What is your question?\n' +
+        'A: Your answer here\n\n' +
+        'Or use multiple choice format:\n' +
+        'Q: Your question?\n' +
+        'A) Option A\n' +
+        'B) Option B\n' +
+        'C) Option C\n' +
+        'D) Option D\n' +
+        'Answer: B'
+      );
+      return;
+    }
+
     setIsGenerating(true);
 
-    // Simulate processing time for UX
-    setTimeout(() => {
-      const questions = generateQuiz(activeChapter.content, numQuestions);
+    // Parse the structured content
+    const questions = parseStructuredContent(selectedChapter.content);
 
-      if (questions.length === 0) {
-        setIsGenerating(false);
-        alert('Could not generate questions from this content. Try adding more text (minimum 200 characters recommended).');
-        return;
-      }
-
-      const quiz: Quiz = {
-        id: uuidv4(),
-        chapterId: activeChapter.id,
-        chapterTitle: activeChapter.title,
-        subject: activeChapter.subject,
-        questions,
-        createdAt: Date.now(),
-      };
-
-      onGenerate(quiz);
+    if (questions.length === 0) {
+      alert(
+        'Error: Could not parse any questions from the content.\n\n' +
+        'Please check that your content follows the required format:\n\n' +
+        'Q: Question text\n' +
+        'A: Answer text\n\n' +
+        'Make sure each question starts with "Q:" and each answer starts with "A:"'
+      );
       setIsGenerating(false);
-    }, 1500);
+      return;
+    }
+
+    // Limit to requested number of questions
+    const selectedQuestions = questions.slice(0, numQuestions);
+
+    // Create quiz object
+    const quiz: Quiz = {
+      id: Date.now().toString(),
+      chapterId: selectedChapter.id,
+      chapterTitle: selectedChapter.title,
+      subject: selectedChapter.subject,
+      questions: selectedQuestions,
+      createdAt: Date.now(),
+    };
+
+    onGenerate(quiz);
+    setIsGenerating(false);
   };
 
+  if (chapters.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <AlertCircle size={48} className="mx-auto mb-4 text-gray-400" />
+        <h2 className="text-xl font-semibold mb-2">No Chapters Available</h2>
+        <p className="text-gray-600">Please add a chapter first before generating a quiz.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Generate Quiz</h1>
-        <p className="text-gray-500 mt-1">Create multiple choice worksheets from your chapter content</p>
+    <div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Generate Quiz</h1>
+        <p className="text-gray-600">Create a quiz from your structured chapter content</p>
       </div>
 
-      {/* Configuration Card */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center gap-2 mb-6">
-          <Settings className="w-5 h-5 text-indigo-600" />
-          <h2 className="text-lg font-semibold text-gray-900">Quiz Settings</h2>
-        </div>
-
-        <div className="space-y-5">
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+        <div className="space-y-6">
           {/* Chapter Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select Chapter</label>
-            <div className="relative">
-              <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-left flex items-center justify-between hover:border-indigo-300 transition-colors"
-              >
-                {activeChapter ? (
-                  <div>
-                    <span className="font-medium text-gray-900">{activeChapter.title}</span>
-                    <span className="ml-2 text-sm text-gray-500">({activeChapter.subject})</span>
-                  </div>
-                ) : (
-                  <span className="text-gray-400">Choose a chapter...</span>
-                )}
-                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
-              </button>
-
-              {showDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10 max-h-60 overflow-y-auto">
-                  {chapters.length > 0 ? (
-                    chapters.map(chapter => (
-                      <button
-                        key={chapter.id}
-                        onClick={() => {
-                          onSelectChapter(chapter);
-                          setShowDropdown(false);
-                        }}
-                        className={`w-full px-4 py-3 text-left hover:bg-indigo-50 transition-colors border-b border-gray-50 last:border-0 ${
-                          activeChapter?.id === chapter.id ? 'bg-indigo-50' : ''
-                        }`}
-                      >
-                        <span className="font-medium text-gray-900">{chapter.title}</span>
-                        <span className="ml-2 text-sm text-gray-500">({chapter.subject} • {chapter.content.length} chars)</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-4 py-6 text-center text-gray-500">
-                      <p>No chapters available</p>
-                      <p className="text-sm mt-1">Upload a chapter first to generate quizzes</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Chapter
+            </label>
+            <select
+              value={selectedChapter?.id || ''}
+              onChange={(e) => {
+                const chapter = chapters.find(c => c.id === e.target.value);
+                setSelectedChapter(chapter || null);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              <option value="">Choose a chapter...</option>
+              {chapters.map((chapter) => (
+                <option key={chapter.id} value={chapter.id}>
+                  {chapter.title} ({chapter.subject})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Number of Questions */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Number of Questions: <span className="text-indigo-600 font-bold">{numQuestions}</span>
+              Number of Questions: {numQuestions}
             </label>
             <input
               type="range"
               min="5"
-              max="30"
+              max="50"
               step="5"
               value={numQuestions}
               onChange={(e) => setNumQuestions(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              className="w-full"
             />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
               <span>5</span>
               <span>10</span>
               <span>15</span>
               <span>20</span>
               <span>25</span>
               <span>30</span>
+              <span>35</span>
+              <span>40</span>
+              <span>45</span>
+              <span>50</span>
             </div>
           </div>
 
-          {/* Content Preview */}
-          {activeChapter && (
-            <div className="bg-gray-50 rounded-xl p-4">
+          {/* Preview */}
+          {selectedChapter && (
+            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <h3 className="text-sm font-medium text-gray-700 mb-2">Content Preview</h3>
-              <p className="text-sm text-gray-600 line-clamp-3">
-                {activeChapter.content.substring(0, 300)}...
-              </p>
-              <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
-                <span>{activeChapter.content.split(/\s+/).length} words</span>
-                <span>{activeChapter.content.length} characters</span>
-                <span>{activeChapter.content.split(/[.!?]+/).filter(s => s.trim().length > 0).length} sentences</span>
-              </div>
-            </div>
-          )}
-
-          {/* Warning for short content */}
-          {activeChapter && activeChapter.content.length < 200 && (
-            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-amber-800">Content may be too short</p>
-                <p className="text-xs text-amber-600 mt-0.5">
-                  For best results, upload at least 200 characters of content. More content = better questions.
-                </p>
+              <pre className="text-xs whitespace-pre-wrap font-mono text-gray-600 max-h-48 overflow-y-auto">
+                {selectedChapter.content.substring(0, 500)}
+                {selectedChapter.content.length > 500 && '\n\n... (truncated)'}
+              </pre>
+              <div className="mt-3 flex items-center gap-2 text-sm">
+                {hasStructuredFormat(selectedChapter.content) ? (
+                  <span className="flex items-center gap-1 text-green-700">
+                    ✓ Valid structured format detected
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-red-700">
+                    ⚠️ Invalid format - requires Q: and A: markers
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -163,21 +162,17 @@ export default function QuizGenerator({ chapters, activeChapter, onGenerate, onS
           {/* Generate Button */}
           <button
             onClick={handleGenerate}
-            disabled={!activeChapter || isGenerating}
-            className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-white transition-all ${
-              !activeChapter || isGenerating
-                ? 'bg-gray-300 cursor-not-allowed'
-                : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-200 hover:shadow-xl'
-            }`}
+            disabled={!selectedChapter || isGenerating}
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
               <>
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Generating Questions...
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Generating Quiz...
               </>
             ) : (
               <>
-                <Sparkles className="w-5 h-5" />
+                <Wand2 size={20} />
                 Generate Quiz
               </>
             )}
@@ -185,46 +180,17 @@ export default function QuizGenerator({ chapters, activeChapter, onGenerate, onS
         </div>
       </div>
 
-      {/* Tips */}
-      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-100">
-        <h3 className="font-semibold text-indigo-900 mb-3 flex items-center gap-2">
-          <Wand2 className="w-5 h-5" />
-          Tips for Better Quizzes
-        </h3>
-        <ul className="space-y-2 text-sm text-indigo-800">
-          <li className="flex items-start gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
-            Upload content with clear definitions and key terms for the best questions
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
-            Longer chapters (500+ words) produce more diverse and accurate questions
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
-            Content with structured information (headings, lists) works best
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
-            You can regenerate quizzes multiple times for different question sets
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
-            Generated quizzes can be taken digitally or printed for manual grading
-          </li>
+      {/* Instructions */}
+      <div className="mt-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+        <h3 className="text-lg font-semibold mb-3 text-blue-900">How It Works</h3>
+        <ul className="space-y-2 text-sm text-blue-800">
+          <li>• The parser scans your content for Q: and A: markers</li>
+          <li>• Each question-answer pair is extracted automatically</li>
+          <li>• Questions are randomized and presented as multiple choice</li>
+          <li>• Wrong answers are generated from other answers in your content</li>
+          <li>• No AI required - 100% deterministic and instant</li>
         </ul>
       </div>
-
-      {/* No chapters state */}
-      {chapters.length === 0 && (
-        <div className="text-center py-8 bg-white rounded-2xl border border-gray-100">
-          <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-gray-900">No Chapters Available</h3>
-          <p className="text-gray-500 mt-2">
-            Go to "My Chapters" to upload your lecture notes and readings first.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

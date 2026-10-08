@@ -1,37 +1,45 @@
 import { useState, useEffect } from 'react';
 import { Chapter, Quiz, View } from './types';
+import { loadChapters, saveChapters, loadQuizzes, saveQuizzes } from './utils/storage';
 import Sidebar from './components/Sidebar';
-import Dashboard from './components/Dashboard';
 import ChapterManager from './components/ChapterManager';
 import QuizGenerator from './components/QuizGenerator';
 import QuizTaker from './components/QuizTaker';
 import QuizResults from './components/QuizResults';
-import PrintView from './components/PrintView';
 
 function App() {
-  const [view, setView] = useState<View>('dashboard');
+  const [view, setView] = useState<View>('chapters');
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
-  const [activeChapter, setActiveChapter] = useState<Chapter | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Load from localStorage
+  // Load data from localStorage on mount
   useEffect(() => {
-    const savedChapters = localStorage.getItem('quizforge-chapters');
-    const savedQuizzes = localStorage.getItem('quizforge-quizzes');
-    if (savedChapters) setChapters(JSON.parse(savedChapters));
-    if (savedQuizzes) setQuizzes(JSON.parse(savedQuizzes));
+    setChapters(loadChapters());
+    setQuizzes(loadQuizzes());
   }, []);
 
-  // Save to localStorage
+  // Save chapters to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('quizforge-chapters', JSON.stringify(chapters));
+    saveChapters(chapters);
   }, [chapters]);
 
+  // Save quizzes to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('quizforge-quizzes', JSON.stringify(quizzes));
+    saveQuizzes(quizzes);
   }, [quizzes]);
+
+  // Responsive sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) setSidebarOpen(false);
+      else setSidebarOpen(true);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const addChapter = (chapter: Chapter) => {
     setChapters(prev => [...prev, chapter]);
@@ -39,120 +47,62 @@ function App() {
 
   const deleteChapter = (id: string) => {
     setChapters(prev => prev.filter(c => c.id !== id));
-    setQuizzes(prev => prev.filter(q => q.chapterId !== id));
   };
 
-  const addQuiz = (quiz: Quiz) => {
+  const generateQuiz = (quiz: Quiz) => {
     setQuizzes(prev => [...prev, quiz]);
     setActiveQuiz(quiz);
     setView('quiz');
   };
 
-  const saveQuizAnswers = (quizId: string, answers: Record<string, number>, score: number) => {
-    setQuizzes(prev => prev.map(q =>
+  const submitQuiz = (quizId: string, answers: Record<string, number>, score: number) => {
+    setQuizzes(prev => prev.map(q => 
       q.id === quizId ? { ...q, answers, score, graded: true } : q
     ));
-    if (activeQuiz && activeQuiz.id === quizId) {
-      setActiveQuiz(prev => prev ? { ...prev, answers, score, graded: true } : null);
+    const updatedQuiz = quizzes.find(q => q.id === quizId);
+    if (updatedQuiz) {
+      setActiveQuiz({ ...updatedQuiz, answers, score, graded: true });
     }
-  };
-
-  const deleteQuiz = (id: string) => {
-    setQuizzes(prev => prev.filter(q => q.id !== id));
-  };
-
-  const startQuiz = (quiz: Quiz) => {
-    setActiveQuiz(quiz);
-    setView('quiz');
-  };
-
-  const viewResults = (quiz: Quiz) => {
-    setActiveQuiz(quiz);
     setView('results');
   };
 
-  const printQuiz = (quiz: Quiz) => {
-    setActiveQuiz(quiz);
-    setView('print');
+  const retakeQuiz = () => {
+    if (activeQuiz) {
+      const resetQuiz = { ...activeQuiz, answers: undefined, score: undefined, graded: false };
+      setActiveQuiz(resetQuiz);
+      setView('quiz');
+    }
   };
 
   const renderView = () => {
     switch (view) {
-      case 'dashboard':
-        return (
-          <Dashboard
-            chapters={chapters}
-            quizzes={quizzes}
-            onStartQuiz={startQuiz}
-            onViewResults={viewResults}
-            onPrintQuiz={printQuiz}
-            onNavigate={setView}
-          />
-        );
       case 'chapters':
-        return (
-          <ChapterManager
-            chapters={chapters}
-            onAdd={addChapter}
-            onDelete={deleteChapter}
-            activeChapter={activeChapter}
-            onSelectChapter={setActiveChapter}
-          />
-        );
+        return <ChapterManager chapters={chapters} onAdd={addChapter} onDelete={deleteChapter} />;
       case 'generate':
-        return (
-          <QuizGenerator
-            chapters={chapters}
-            activeChapter={activeChapter}
-            onGenerate={addQuiz}
-            onSelectChapter={setActiveChapter}
-          />
-        );
+        return <QuizGenerator chapters={chapters} onGenerate={generateQuiz} />;
       case 'quiz':
-        return activeQuiz ? (
-          <QuizTaker
-            quiz={activeQuiz}
-            onSubmit={saveQuizAnswers}
-            onBack={() => setView('dashboard')}
-          />
-        ) : null;
+        return activeQuiz ? <QuizTaker quiz={activeQuiz} onSubmit={submitQuiz} onBack={() => setView('generate')} /> : null;
       case 'results':
-        return activeQuiz ? (
-          <QuizResults
-            quiz={activeQuiz}
-            onBack={() => setView('dashboard')}
-            onRetake={() => {
-              const resetQuiz = { ...activeQuiz, answers: undefined, score: undefined, graded: false };
-              setActiveQuiz(resetQuiz);
-              setView('quiz');
-            }}
-            onPrint={() => setView('print')}
-          />
-        ) : null;
-      case 'print':
-        return activeQuiz ? (
-          <PrintView
-            quiz={activeQuiz}
-            onBack={() => setView('dashboard')}
-          />
-        ) : null;
+        return activeQuiz ? <QuizResults quiz={activeQuiz} onBack={() => setView('generate')} onRetake={retakeQuiz} onPrint={() => window.print()} /> : null;
       default:
-        return null;
+        return <ChapterManager chapters={chapters} onAdd={addChapter} onDelete={deleteChapter} />;
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      <Sidebar
-        currentView={view}
-        onNavigate={setView}
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar 
+        currentView={view} 
+        onViewChange={setView} 
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         chapterCount={chapters.length}
         quizCount={quizzes.length}
       />
-      <main className={`flex-1 overflow-auto transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+      <main 
+        className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'} p-8`}
+      >
+        <div className="max-w-6xl mx-auto">
           {renderView()}
         </div>
       </main>
