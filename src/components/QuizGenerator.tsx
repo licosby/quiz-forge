@@ -70,20 +70,18 @@ export default function QuizGenerator({ chapters, onGenerate }: QuizGeneratorPro
 
   if (chapters.length === 0) {
     return (
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center py-12">
-          <AlertCircle size={48} className="mx-auto mb-4 text-gray-400" />
-          <h2 className="text-xl font-semibold mb-2">No Chapters Available</h2>
-          <p className="text-gray-600">Please add a chapter first before generating a quiz.</p>
-        </div>
+      <div className="text-center py-12">
+        <AlertCircle size={48} className="mx-auto mb-4 text-gray-400" />
+        <h2 className="text-xl font-semibold mb-2">No Chapters Available</h2>
+        <p className="text-gray-600">Please add a chapter first before generating a quiz.</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Generate Quiz</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Generate Quiz</h1>
         <p className="text-gray-600">Create a quiz from your structured chapter content</p>
       </div>
 

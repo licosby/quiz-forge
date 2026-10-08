@@ -23,23 +23,22 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onToggle, c
 
       {/* Sidebar */}
       <aside 
-        className={`fixed left-0 top-0 h-full z-50 transition-all duration-300 ${
+        className={`fixed left-0 top-0 h-full z-50 transition-all duration-300 bg-gradient-to-b from-indigo-700 to-purple-800 text-white ${
           isOpen ? 'w-64' : 'w-16'
         }`}
-        style={{ background: 'var(--bg-sidebar)' }}
       >
         {/* Header */}
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center justify-between">
             {isOpen && (
-              <h1 className="text-xl font-bold text-white">QuizForge</h1>
+              <h1 className="text-xl font-bold">QuizForge</h1>
             )}
             <button
               onClick={onToggle}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
               aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
             >
-              {isOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
+              {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
@@ -50,8 +49,8 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onToggle, c
             onClick={() => onViewChange('chapters')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
               currentView === 'chapters' 
-                ? 'bg-white/20 text-white' 
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ? 'bg-white/20' 
+                : 'hover:bg-white/10'
             }`}
           >
             <BookOpen className="w-5 h-5" />
@@ -67,8 +66,8 @@ export default function Sidebar({ currentView, onViewChange, isOpen, onToggle, c
             onClick={() => onViewChange('generate')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
               currentView === 'generate' 
-                ? 'bg-white/20 text-white' 
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ? 'bg-white/20' 
+                : 'hover:bg-white/10'
             }`}
           >
             <Wand2 className="w-5 h-5" />

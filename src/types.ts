@@ -27,4 +27,4 @@ export interface Quiz {
   graded?: boolean;
 }
 
-export type View = 'dashboard' | 'chapters' | 'generate' | 'quiz' | 'results' | 'print' | 'settings';
+export type View = 'chapters' | 'generate' | 'quiz' | 'results';

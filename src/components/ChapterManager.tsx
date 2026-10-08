@@ -63,9 +63,9 @@ export default function ChapterManager({ chapters, onAdd, onDelete }: ChapterMan
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">My Chapters</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">My Chapters</h1>
         <p className="text-gray-600">Upload your lecture notes and reading materials in structured format</p>
       </div>
 

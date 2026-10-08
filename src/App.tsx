@@ -90,7 +90,7 @@ function App() {
   };
 
   return (
-    <div className="flex min-h-screen" style={{ background: 'var(--bg-primary)' }}>
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar 
         currentView={view} 
         onViewChange={setView} 
@@ -100,10 +100,11 @@ function App() {
         quizCount={quizzes.length}
       />
       <main 
-        className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'}`}
-        style={{ padding: '2rem' }}
+        className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'} p-8`}
       >
-        {renderView()}
+        <div className="max-w-6xl mx-auto">
+          {renderView()}
+        </div>
       </main>
     </div>
   );
