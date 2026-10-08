@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Chapter, Quiz } from '../types';
-import { parseStructuredContent, hasStructuredFormat } from '../utils/structuredParser';
-import { Wand2, AlertCircle } from 'lucide-react';
+import { generateQuizFromContent } from '../utils/quizGenerator';
+import { Wand2, AlertCircle, Loader2 } from 'lucide-react';
 
 interface QuizGeneratorProps {
   chapters: Chapter[];
@@ -12,60 +12,39 @@ export default function QuizGenerator({ chapters, onGenerate }: QuizGeneratorPro
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
   const [numQuestions, setNumQuestions] = useState(10);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!selectedChapter) return;
 
-    // Check if content has structured format
-    if (!hasStructuredFormat(selectedChapter.content)) {
-      alert(
-        'Error: This chapter does not follow the required Q: and A: format.\n\n' +
-        'Please edit the chapter content to use the structured format:\n\n' +
-        'Q: What is your question?\n' +
-        'A: Your answer here\n\n' +
-        'Or use multiple choice format:\n' +
-        'Q: Your question?\n' +
-        'A) Option A\n' +
-        'B) Option B\n' +
-        'C) Option C\n' +
-        'D) Option D\n' +
-        'Answer: B'
-      );
-      return;
-    }
-
     setIsGenerating(true);
+    setError(null);
 
-    // Parse the structured content
-    const questions = parseStructuredContent(selectedChapter.content);
+    try {
+      // Generate questions using AI
+      const questions = await generateQuizFromContent(selectedChapter.content, numQuestions);
 
-    if (questions.length === 0) {
-      alert(
-        'Error: Could not parse any questions from the content.\n\n' +
-        'Please check that your content follows the required format:\n\n' +
-        'Q: Question text\n' +
-        'A: Answer text\n\n' +
-        'Make sure each question starts with "Q:" and each answer starts with "A:"'
-      );
+      if (questions.length === 0) {
+        throw new Error('No questions were generated. Please try again with different content.');
+      }
+
+      // Create quiz object
+      const quiz: Quiz = {
+        id: Date.now().toString(),
+        chapterId: selectedChapter.id,
+        chapterTitle: selectedChapter.title,
+        subject: selectedChapter.subject,
+        questions: questions,
+        createdAt: Date.now(),
+      };
+
+      onGenerate(quiz);
+    } catch (err) {
+      console.error('Quiz generation error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate quiz. Please try again.');
+    } finally {
       setIsGenerating(false);
-      return;
     }
-
-    // Limit to requested number of questions
-    const selectedQuestions = questions.slice(0, numQuestions);
-
-    // Create quiz object
-    const quiz: Quiz = {
-      id: Date.now().toString(),
-      chapterId: selectedChapter.id,
-      chapterTitle: selectedChapter.title,
-      subject: selectedChapter.subject,
-      questions: selectedQuestions,
-      createdAt: Date.now(),
-    };
-
-    onGenerate(quiz);
-    setIsGenerating(false);
   };
 
   if (chapters.length === 0) {
@@ -146,15 +125,22 @@ export default function QuizGenerator({ chapters, onGenerate }: QuizGeneratorPro
                 {selectedChapter.content.length > 500 && '\n\n... (truncated)'}
               </pre>
               <div className="mt-3 flex items-center gap-2 text-sm">
-                {hasStructuredFormat(selectedChapter.content) ? (
-                  <span className="flex items-center gap-1 text-green-700">
-                    ✓ Valid structured format detected
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-red-700">
-                    ⚠️ Invalid format - requires Q: and A: markers
-                  </span>
-                )}
+                <span className="flex items-center gap-1 text-green-700">
+                  ✓ {selectedChapter.content.length.toLocaleString()} characters ready for AI analysis
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
+                <div>
+                  <h3 className="font-medium text-red-900 mb-1">Generation Failed</h3>
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
               </div>
             </div>
           )}
@@ -167,13 +153,13 @@ export default function QuizGenerator({ chapters, onGenerate }: QuizGeneratorPro
           >
             {isGenerating ? (
               <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Generating Quiz...
+                <Loader2 className="animate-spin" size={20} />
+                AI is analyzing your content...
               </>
             ) : (
               <>
                 <Wand2 size={20} />
-                Generate Quiz
+                Generate Quiz with AI
               </>
             )}
           </button>
@@ -184,11 +170,11 @@ export default function QuizGenerator({ chapters, onGenerate }: QuizGeneratorPro
       <div className="mt-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
         <h3 className="text-lg font-semibold mb-3 text-blue-900">How It Works</h3>
         <ul className="space-y-2 text-sm text-blue-800">
-          <li>• The parser scans your content for Q: and A: markers</li>
-          <li>• Each question-answer pair is extracted automatically</li>
-          <li>• Questions are randomized and presented as multiple choice</li>
-          <li>• Wrong answers are generated from other answers in your content</li>
-          <li>• No AI required - 100% deterministic and instant</li>
+          <li>• Upload any textbook chapter, lecture notes, or study material</li>
+          <li>• AI automatically analyzes the content and generates exam-style questions</li>
+          <li>• Questions include clear stems, plausible answer choices, and explanations</li>
+          <li>• Each question references the source text for verification</li>
+          <li>• No manual formatting required - just upload and generate!</li>
         </ul>
       </div>
     </div>
