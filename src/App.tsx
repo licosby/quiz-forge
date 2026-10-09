@@ -6,6 +6,7 @@ import ChapterManager from './components/ChapterManager';
 import QuizGenerator from './components/QuizGenerator';
 import QuizTaker from './components/QuizTaker';
 import QuizResults from './components/QuizResults';
+import PrintView from './components/PrintView';
 
 function App() {
   const [view, setView] = useState<View>('chapters');
@@ -83,7 +84,9 @@ function App() {
       case 'quiz':
         return activeQuiz ? <QuizTaker quiz={activeQuiz} onSubmit={submitQuiz} onBack={() => setView('generate')} /> : null;
       case 'results':
-        return activeQuiz ? <QuizResults quiz={activeQuiz} onBack={() => setView('generate')} onRetake={retakeQuiz} onPrint={() => window.print()} /> : null;
+        return activeQuiz ? <QuizResults quiz={activeQuiz} onBack={() => setView('generate')} onRetake={retakeQuiz} onPrint={() => setView('print')} /> : null;
+      case 'print':
+        return activeQuiz ? <PrintView quiz={activeQuiz} onBack={() => setView('results')} /> : null;
       default:
         return <ChapterManager chapters={chapters} onAdd={addChapter} onDelete={deleteChapter} />;
     }
